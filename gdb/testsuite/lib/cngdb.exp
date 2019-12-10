@@ -1,0 +1,117 @@
+# Copyright 2004-2016 Free Software Foundation, Inc.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# If there are additional arguments, pass them to gdb_breakpoint.
+# We recognize no-message/message ourselves.
+# The default is no-message.
+# no-message is messed up here, like gdb_breakpoint: to preserve
+# historical usage fails are always printed by default.
+# no-message: turns off printing of fails (and passes, but they're already off)
+# message: turns on printing of passes (and fails, but they're already on)
+
+proc runto_nodelete { function args } {
+    global gdb_prompt
+    global decimal
+
+    # Default to "no-message".
+    set args "no-message $args"
+
+    set print_pass 0
+    set print_fail 1
+    set no_message_loc [lsearch -exact $args no-message]
+    set message_loc [lsearch -exact $args message]
+    # The last one to appear in args wins.
+    if { $no_message_loc > $message_loc } {
+	set print_fail 0
+    } elseif { $message_loc > $no_message_loc } {
+	set print_pass 1
+    }
+
+    set test_name "running to $function in runto"
+
+    # We need to use eval here to pass our varargs args to gdb_breakpoint
+    # which is also a varargs function.
+    # But we also have to be careful because $function may have multiple
+    # elements, and we don't want Tcl to move the remaining elements after
+    # the first to $args.  That is why $function is wrapped in {}.
+    if ![eval gdb_breakpoint {$function} $args] {
+	return 0
+    }
+
+    gdb_run_cmd
+    
+    # the "at foo.c:36" output we get with -g.
+    # the "in func" output we get without -g.
+    gdb_expect 30 {
+	-re "Break.* at .*:$decimal.*$gdb_prompt $" {
+	    if { $print_pass } {
+		pass $test_name
+	    }
+	    return 1
+	}
+	-re "Breakpoint \[0-9\]*, \[0-9xa-f\]* in .*$gdb_prompt $" { 
+	    if { $print_pass } {
+		pass $test_name
+	    }
+	    return 1
+	}
+	-re "The target does not support running in non-stop mode.\r\n$gdb_prompt $" {
+	    if { $print_fail } {
+		unsupported "Non-stop mode not supported"
+	    }
+	    return 0
+	}
+	-re ".*A problem internal to GDB has been detected" {
+	    if { $print_fail } {
+		fail "$test_name (GDB internal error)"
+	    }
+	    gdb_internal_error_resync
+	    return 0
+	}
+	-re "$gdb_prompt $" { 
+	    if { $print_fail } {
+		fail $test_name
+	    }
+	    return 0
+	}
+	eof { 
+	    if { $print_fail } {
+		fail "$test_name (eof)"
+	    }
+	    return 0
+	}
+	timeout { 
+	    if { $print_fail } {
+		fail "$test_name (timeout)"
+	    }
+	    return 0
+	}
+    }
+    if { $print_pass } {
+	pass $test_name
+    }
+    return 1
+}
+
+# Ask gdb to run until we hit a breakpoint at main.
+#
+# N.B. This function deletes all existing breakpoints.
+# If you don't want that, use gdb_start_cmd.
+
+proc runto_main_nodelete { } {
+    return [runto_nodelete main no-message]
+}
+
+
