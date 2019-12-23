@@ -74,6 +74,7 @@ strip ${LIBPATH}/libcngdb_backend.so -g -S -d --strip-debug --strip-dw --strip-u
 
 make prefix=$INSTALLDIR install
 
+mv $LIBPATH/libcngdb_backend.so $INSTALLDIR/lib64
 mv $INSTALLDIR/bin/gdb $INSTALLDIR/bin/cngdb
 
 popd
