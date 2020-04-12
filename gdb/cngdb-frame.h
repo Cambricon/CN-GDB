@@ -23,6 +23,14 @@
 #include "frame-unwind.h"
 #include "frame-base.h"
 
+#define LINKREG_RANGE_BEGIN 0
+#define LINKREG_RANGE_END 2
+
+#define PROLOGUE_RANGE_BEGIN 0
+#define PROLOGUE_RANGE_END 5
+
+#define BEGINING_SAFE_PC 5
+
 extern const struct frame_unwind cngdb_frame_unwind;
 extern const struct frame_base cngdb_frame_base;
 
@@ -57,5 +65,7 @@ const struct frame_base *
 int cngdb_frame_outmost (struct frame_info *this_frame);
 
 int cngdb_frame_can_print (void);
+
+int cngdb_stop_in_prologue (void);
 
 #endif
