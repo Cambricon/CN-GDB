@@ -85,10 +85,16 @@ cngdb_abi_prologue_analysis (void)
   CORE_ADDR pc_start = get_pc_function_start (pc);
 
   /* return if this is prologue start */
-  if (pc >= pc_start && pc - pc_start < 2)
+  if (pc >= pc_start && pc - pc_start < PROLOGUE_RANGE_END)
     return pc - pc_start + 1;
   else
     return 0;
+}
+
+int
+cngdb_stop_in_prologue (void)
+{
+  return cngdb_abi_prologue_analysis();
 }
 
 /* get frame base via abi info */
@@ -291,6 +297,10 @@ cngdb_frame_base_sniffer (struct frame_info *this_frame)
 static int
 cngdb_abi_frame_outmost (struct frame_info *this_frame)
 {
+  if (cngdb_abi_prologue_analysis ())
+    {
+      return 0;
+    }
   struct gdbarch *gdbarch = get_frame_arch (this_frame);
 
   /** Provide an invalid cache */

@@ -6701,10 +6701,35 @@ process_event_stop_test (struct execution_control_state *ecs)
      initial outermost frame, before sp was valid, would
      have code_addr == &_start.  See the comment in frame_id_eq
      for more.  */
+  if (cngdb_focus_on_device() &&
+      cngdb_stop_in_prologue() > LINKREG_RANGE_BEGIN &&
+      cngdb_stop_in_prologue() <= LINKREG_RANGE_END &&
+      ecs->event_thread->control.step_over_calls == STEP_OVER_ALL &&
+      ecs->event_thread->control.step_range_end != 1)
+    {
+      uint32_t dev, cluster, core, res;
+      cngdb_unpack_coord (cngdb_current_focus(), &dev, &cluster, &core);
+      cngdb_abi_resume (1, dev, cluster, core);
+      res = 0;
+      while (!res)
+        {
+          cngdb_api_query_stop (&res);
+        }
+
+      res = 0;
+      cngdb_abi_resume (1, dev, cluster, core);
+      while (!res)
+        {
+          cngdb_api_query_stop (&res);
+        }
+    }
   if (!frame_id_eq (get_stack_frame_id (frame),
                     ecs->event_thread->control.step_stack_frame_id)
-      && ((cngdb_focus_on_device() && !cngdb_on_start() && stop_pc >= 5 || frame_id_eq (frame_unwind_caller_id (get_current_frame ()),
-                       ecs->event_thread->control.step_stack_frame_id))
+      && ((frame_id_eq (frame_unwind_caller_id (get_current_frame ()),
+                        ecs->event_thread->control.step_stack_frame_id) &&
+          (!cngdb_focus_on_device() ||
+           (cngdb_focus_on_device() &&
+            !cngdb_on_start() && stop_pc >= BEGINING_SAFE_PC)))
           && (!frame_id_eq (ecs->event_thread->control.step_stack_frame_id,
                             outer_frame_id)
               || (ecs->event_thread->control.step_start_function
